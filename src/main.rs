@@ -6,6 +6,7 @@ use std::env::args;
 use std::fs::File;
 use std::io::copy;
 use std::io::BufReader;
+use std::path::Path;
 // use std::process::Output;
 use std::time::Instant;
 
@@ -71,6 +72,12 @@ fn main() {
     }
     match com_struct.work.as_str() {
         "c" => {
+            let pth = Path::new(&com_struct.input);
+            if pth.is_dir()
+            {
+                println!("Directory provided!!");
+                return;
+            }
             let mut input = BufReader::new(File::open(com_struct.input).unwrap());
             let output = File::create(com_struct.output).unwrap();
             //Encoding
