@@ -2,13 +2,17 @@ extern crate flate2;
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use std::env;
 use std::env::args;
+use std::fs;
+use std::fs::create_dir_all;
 use std::fs::File;
 use std::io::copy;
 use std::io::BufReader;
 use std::path::Path;
 // use std::process::Output;
 use std::time::Instant;
+use tar::Builder;
 
 #[derive(Default)]
 struct Commands {
@@ -75,7 +79,7 @@ fn main() {
             let pth = Path::new(&com_struct.input);
             if pth.is_dir()
             {
-                println!("Directory provided!!");
+                println!("Directory provided!! Consider using flag D");
                 return;
             }
             let mut input = BufReader::new(File::open(com_struct.input).unwrap());
@@ -91,7 +95,19 @@ fn main() {
             );
             println!("Target length: {:?}", output.metadata().unwrap().len());
             println!("Elapsed Time: {:?}", start.elapsed());
-        }
+        },
+        "d" => {
+            let pth = Path::new(&com_struct.input);
+            if pth.is_file()
+            {
+                println!("File provided!! Consider using flag c");
+                return;
+            }
+            let start = Instant::now();
+            comp_dir(com_struct);
+            println!("Directory Archived!!");
+            println!("Elapsed Time: {:?}", start.elapsed());
+        },
         _ => {
             println!("Invalid flags selected!!");
         }
@@ -136,3 +152,26 @@ fn print_out(){
                     |_|                
     "#)
 }
+
+fn comp_dir(stru_cpy: Commands) {
+    let pth = Path::new(&stru_cpy.output);
+    let npth = env::current_dir().unwrap();
+    let npth = npth.join(pth);
+    if !npth.exists()
+    {
+        fs::create_dir_all(&npth).unwrap();
+    } 
+    let npth = npth.join("zuzarchive.tar.gz");
+    // print!("{npth:?}");
+    let tar_gz = File::create(npth).unwrap();
+    let enc = GzEncoder::new(tar_gz,Compression::new(stru_cpy.level));
+    let mut tar = tar::Builder::new(enc);
+    tar.append_dir_all("content", stru_cpy.input).unwrap();
+}
+
+/* TODO: 
+1 -> Absolute path hadles  
+2 -> archive naming
+3 -> Uncompress
+4 -> Tests
+*/
