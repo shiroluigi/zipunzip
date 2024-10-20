@@ -137,6 +137,28 @@ fn main() {
     }
 }
 
+fn comp_dir(stru_cpy: Commands) {
+    let pth = Path::new(&stru_cpy.output);
+    let npth = env::current_dir().unwrap();
+    let npth = npth.join(pth);
+    if !npth.exists() {
+        fs::create_dir_all(&npth).unwrap();
+    }
+    let mut name = stru_cpy.name.to_owned();
+    name.push_str(".tar.gz");
+    let npth = npth.join(name);
+    let tar_gz = File::create(npth).unwrap();
+    let enc = GzEncoder::new(tar_gz, Compression::new(stru_cpy.level));
+    let mut tar = tar::Builder::new(enc);
+    tar.append_dir_all("content", stru_cpy.input).unwrap();
+}
+
+
+fn decompression_logic() {
+    //Decompression logic
+}
+
+
 fn print_help() {
     println!(
         r#"
@@ -191,21 +213,7 @@ fn chekc_if_absolute(p: &Path) -> bool {
     }
     false
 }
-fn comp_dir(stru_cpy: Commands) {
-    let pth = Path::new(&stru_cpy.output);
-    let npth = env::current_dir().unwrap();
-    let npth = npth.join(pth);
-    if !npth.exists() {
-        fs::create_dir_all(&npth).unwrap();
-    }
-    let mut name = stru_cpy.name.to_owned();
-    name.push_str(".tar.gz");
-    let npth = npth.join(name);
-    let tar_gz = File::create(npth).unwrap();
-    let enc = GzEncoder::new(tar_gz, Compression::new(stru_cpy.level));
-    let mut tar = tar::Builder::new(enc);
-    tar.append_dir_all("content", stru_cpy.input).unwrap();
-}
+
 
 /* TODO:
 1 -> Uncompress
