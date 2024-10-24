@@ -12,6 +12,7 @@ use std::io::copy;
 use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
+mod utilities;
 
 #[derive(Default)]
 struct Commands {
@@ -24,7 +25,7 @@ struct Commands {
 fn main() {
     let cmd_string: Vec<String> = args().collect();
     if cmd_string.contains(&"--help".to_string()) | (cmd_string.len() == 1) {
-        print_help();
+        utilities::print_help();
         return;
     }
     if cmd_string.contains(&"--compress".to_string()) | (cmd_string.len() == 1) {
@@ -32,8 +33,8 @@ fn main() {
     }
 }
 fn compression_logic(cmd_string : Vec<String>) -> i32{
-    print_help();
-    print_out();
+    utilities::print_help();
+    utilities::print_out();
     let mut com_struct: Commands = Commands::default();
     for i in 0..cmd_string.len() - 1 {
         match cmd_string[i].as_str() {
@@ -97,7 +98,7 @@ fn compression_logic(cmd_string : Vec<String>) -> i32{
             }
             let cpath = env::current_dir().unwrap();
             let t_opth = Path::new(&com_struct.output);
-            let check_abs = chekc_if_absolute(t_opth);
+            let check_abs = utilities::check_if_absolute(t_opth);
             let opth;
             if !check_abs {
                 opth = cpath.join(t_opth);
@@ -142,21 +143,6 @@ fn compression_logic(cmd_string : Vec<String>) -> i32{
         }
     }
     0
-}
-fn comp_dir(stru_cpy: Commands) {
-    let pth = Path::new(&stru_cpy.output);
-    let npth = env::current_dir().unwrap();
-    let npth = npth.join(pth);
-    if !npth.exists() {
-        fs::create_dir_all(&npth).unwrap();
-    }
-    let mut name = stru_cpy.name.to_owned();
-    name.push_str(".tar.gz");
-    let npth = npth.join(name);
-    let tar_gz = File::create(npth).unwrap();
-    let enc = GzEncoder::new(tar_gz, Compression::new(stru_cpy.level));
-    let mut tar = tar::Builder::new(enc);
-    tar.append_dir_all("content", stru_cpy.input).unwrap();
 }
 
 // Under construction // Temporary template
@@ -203,68 +189,22 @@ fn decompression_logic(path : String) {
 }   
 
 
-fn print_help() {
-    println!(
-        r#"
-=======================================================================================================
- ________   ___   ________   ___  ___   ________    ________   ___   ________   
-|\_____  \ |\  \ |\   __  \ |\  \|\  \ |\   ___  \ |\_____  \ |\  \ |\   __  \  
- \|___/  /|\ \  \\ \  \|\  \\ \  \\\  \\ \  \\ \  \ \|___/  /|\ \  \\ \  \|\  \ 
-     /  / / \ \  \\ \   ____\\ \  \\\  \\ \  \\ \  \    /  / / \ \  \\ \   ____\
-    /  /_/__ \ \  \\ \  \___| \ \  \\\  \\ \  \\ \  \  /  /_/__ \ \  \\ \  \___|
-   |\________\\ \__\\ \__\     \ \_______\\ \__\\ \__\|\________\\ \__\\ \__\   
-    \|_______| \|__| \|__|      \|_______| \|__| \|__| \|_______| \|__| \|__|                           
-
-    Thank you for using zipunzip, this tool is used to compress and decompress any file
-        Usage: 
-        
-        modes [ --compress , --decompress ]
-
-        --compress:
-            -i: input file location and name (Ex: /dir/folder)
-            -o: output file location (Ex: /dir/folder)
-            -n: output file name
-            -m: [f -or- d ] f -> file d -> directory
-            -l: compression mode 1-9, 1 is lowest compression 9 is highest
-            --help: this text
-        --decompress:
-            //logic pending
-
-            other info:
-            . = current directory
-            / = root directory ( C:/ in Windows)
-            Use ' ' for any directory names containing spaces
-
-        Syntax : zipunzip -i <value> -o <value> -m <value> -l <value> (!! Order doesnot matter !!)
-
-=======================================================================================================
-    "#
-    )
-}
-
-fn print_out() {
-    println!(
-        r#"
-                _                  _   
-               | |                | |  
-   ___   _   _ | |_  _ __   _   _ | |_ 
-  / _ \ | | | || __|| '_ \ | | | || __|
- | (_) || |_| || |_ | |_) || |_| || |_ 
-  \___/  \__,_| \__|| .__/  \__,_| \__|
-                    | |                
-                    |_|                
-    "#
-    )
-}
-fn chekc_if_absolute(p: &Path) -> bool {
-    if p.is_absolute() {
-        return true;
-    }
-    false
-}
-
-
 /* TODO:
 1 -> Uncompress
 2 -> Tests
 */
+pub fn comp_dir(stru_cpy: Commands) {
+    let pth = Path::new(&stru_cpy.output);
+    let npth = env::current_dir().unwrap();
+    let npth = npth.join(pth);
+    if !npth.exists() {
+        fs::create_dir_all(&npth).unwrap();
+    }
+    let mut name = stru_cpy.name.to_owned();
+    name.push_str(".tar.gz");
+    let npth = npth.join(name);
+    let tar_gz = File::create(npth).unwrap();
+    let enc = GzEncoder::new(tar_gz, Compression::new(stru_cpy.level));
+    let mut tar = tar::Builder::new(enc);
+    tar.append_dir_all("content", stru_cpy.input).unwrap();
+}
