@@ -129,7 +129,7 @@ fn compression_logic(cmd_string : Vec<String>) -> i32{
         "d" => {
             let pth = Path::new(&com_struct.input);
             if pth.is_file() {
-                println!("File provided!! Consider using flag `-m c`");
+                println!("File provided!! Consider using flag `-m f`");
                 return -1;
             }
             let start = Instant::now();
@@ -224,7 +224,7 @@ fn print_help() {
             -i: input file location and name (Ex: /dir/folder)
             -o: output file location (Ex: /dir/folder)
             -n: output file name
-            -m: [f -or- d ] c -> file d -> directory
+            -m: [f -or- d ] f -> file d -> directory
             -l: compression mode 1-9, 1 is lowest compression 9 is highest
             --help: this text
         --decompress:
