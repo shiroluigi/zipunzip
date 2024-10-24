@@ -7,6 +7,7 @@ use std::env::args;
 use std::fs;
 use std::fs::create_dir_all;
 use std::fs::File;
+use std::io;
 use std::io::copy;
 use std::io::BufReader;
 use std::path::Path;
@@ -21,20 +22,25 @@ struct Commands {
     name: String,
 }
 fn main() {
-    let mut com_struct: Commands = Commands::default();
     let cmd_string: Vec<String> = args().collect();
     if cmd_string.contains(&"--help".to_string()) | (cmd_string.len() == 1) {
         print_help();
         return;
     }
+    if cmd_string.contains(&"--compress".to_string()) | (cmd_string.len() == 1) {
+        std::process::exit(compression_logic(cmd_string));
+    }
+}
+fn compression_logic(cmd_string : Vec<String>) -> i32{
     print_help();
     print_out();
+    let mut com_struct: Commands = Commands::default();
     for i in 0..cmd_string.len() - 1 {
         match cmd_string[i].as_str() {
             "-n" => {
                 if cmd_string[i + 1].starts_with("-") {
                     println!("Woops wrong syntax");
-                    return;
+                    return -1;
                 } else {
                     com_struct.name = cmd_string[i + 1].clone();
                 }
@@ -42,7 +48,7 @@ fn main() {
             "-m" => {
                 if cmd_string[i + 1].starts_with("-") {
                     println!("Woops wrong syntax");
-                    return;
+                    return -1;
                 } else {
                     com_struct.work = cmd_string[i + 1].clone();
                 }
@@ -50,7 +56,7 @@ fn main() {
             "-i" => {
                 if cmd_string[i + 1].starts_with("-") {
                     println!("Woops wrong syntax");
-                    return;
+                    return -1;
                 } else {
                     com_struct.input = cmd_string[i + 1].clone();
                 }
@@ -58,7 +64,7 @@ fn main() {
             "-o" => {
                 if cmd_string[i + 1].starts_with("-") {
                     println!("Woops wrong syntax");
-                    return;
+                    return -1;
                 } else {
                     com_struct.output = cmd_string[i + 1].clone();
                 }
@@ -66,7 +72,7 @@ fn main() {
             "-l" => {
                 if cmd_string[i + 1].starts_with("-") {
                     println!("Woops wrong syntax");
-                    return;
+                    return -1;
                 } else {
                     com_struct.level = cmd_string[i + 1].parse().unwrap();
                 }
@@ -82,12 +88,12 @@ fn main() {
         println!("Woops! Command criteria not fullfilled");
     }
     match com_struct.work.as_str() {
-        "c" => {
+        "f" => {
             let ipth = Path::new(&com_struct.input);
             println!("Input {ipth:?}");
             if ipth.is_dir() {
                 println!("Directory provided!! Consider using flag `-m d` ");
-                return;
+                return -1;
             }
             let cpath = env::current_dir().unwrap();
             let t_opth = Path::new(&com_struct.output);
@@ -124,7 +130,7 @@ fn main() {
             let pth = Path::new(&com_struct.input);
             if pth.is_file() {
                 println!("File provided!! Consider using flag `-m c`");
-                return;
+                return -1;
             }
             let start = Instant::now();
             comp_dir(com_struct);
@@ -135,8 +141,8 @@ fn main() {
             println!("Invalid flags selected!!");
         }
     }
+    0
 }
-
 fn comp_dir(stru_cpy: Commands) {
     let pth = Path::new(&stru_cpy.output);
     let npth = env::current_dir().unwrap();
@@ -153,10 +159,48 @@ fn comp_dir(stru_cpy: Commands) {
     tar.append_dir_all("content", stru_cpy.input).unwrap();
 }
 
-
-fn decompression_logic() {
+// Under construction // Temporary template
+fn decompression_logic(path : String) {
     //Decompression logic
-}
+    let file = fs::File::open(&path).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+
+        let outpath = match file.enclosed_name() {
+            Some(path) => path.to_owned(),
+            None => continue,
+        };
+        {
+            let comment = file.comment();
+            if !comment.is_empty(){
+                println!("File {} comment:{} ",i,comment);
+            }
+        }
+        if (*file.name()).ends_with('/'){
+            println!("File {} extracted to {}", i, outpath.display());
+            fs::create_dir_all(&outpath).unwrap();
+        }
+        else {
+            println!("File {} extracted to {} ", i, outpath.display());
+            if let Some(p) = outpath.parent() {
+                if !p.exists(){
+                    fs::create_dir_all(&p).unwrap();
+                }
+            }
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            io::copy(&mut file, &mut outfile).unwrap();
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Some(mode) = file.unix_mode(){
+                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+            }
+        }
+    }
+}   
 
 
 fn print_help() {
@@ -173,13 +217,18 @@ fn print_help() {
 
     Thank you for using zipunzip, this tool is used to compress and decompress any file
         Usage: 
+        
+        modes [ --compress , --decompress ]
 
+        --compress:
             -i: input file location and name (Ex: /dir/folder)
             -o: output file location (Ex: /dir/folder)
             -n: output file name
-            -m: [c -or- d ] c -> compress and d -> decompress
+            -m: [f -or- d ] c -> file d -> directory
             -l: compression mode 1-9, 1 is lowest compression 9 is highest
             --help: this text
+        --decompress:
+            //logic pending
 
             other info:
             . = current directory
