@@ -28,7 +28,7 @@ fn main() {
         utilities::print_help();
         return;
     }
-    if cmd_string.contains(&"--compress".to_string()) | (cmd_string.len() == 1) {
+    if cmd_string.contains(&"--compress".to_string()) {
         std::process::exit(compression_logic(cmd_string));
     }
 }
