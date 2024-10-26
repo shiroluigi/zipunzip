@@ -1,5 +1,7 @@
 extern crate flate2;
 
+use flate2::bufread;
+use flate2::bufread::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use std::env;
@@ -22,6 +24,13 @@ struct Commands {
     level: u32,
     name: String,
 }
+#[derive(Default)]
+struct DCommands {
+    input: String,
+    output: String,
+}
+
+// ###################################ENTRY POINT###################################
 fn main() {
     let cmd_string: Vec<String> = args().collect();
     if cmd_string.contains(&"--help".to_string()) | (cmd_string.len() == 1) {
@@ -31,8 +40,13 @@ fn main() {
     if cmd_string.contains(&"--compress".to_string()) {
         std::process::exit(compression_logic(cmd_string));
     }
+    if cmd_string.contains(&"--decompress".to_string()) {
+        std::process::exit(decompression_logic(cmd_string));
+    }
 }
-fn compression_logic(cmd_string : Vec<String>) -> i32{
+// ###################################ENTRY POINT###################################
+
+fn compression_logic(cmd_string: Vec<String>) -> i32 {
     utilities::print_help();
     utilities::print_out();
     let mut com_struct: Commands = Commands::default();
@@ -111,9 +125,11 @@ fn compression_logic(cmd_string : Vec<String>) -> i32{
                     create_dir_all(&opth).unwrap();
                 }
             }
+            let mut outputname_with_ext = com_struct.name.clone();
+            outputname_with_ext.push_str(".gz");
             println!("Output location at: {opth:?}");
             let mut input = BufReader::new(File::open(com_struct.input).unwrap());
-            let output = File::create(opth.join(com_struct.name)).unwrap();
+            let output = File::create(opth.join(outputname_with_ext)).unwrap();
             println!("Compressing....");
             //Encoding
             let mut encoder = GzEncoder::new(output, Compression::new(com_struct.level));
@@ -145,55 +161,59 @@ fn compression_logic(cmd_string : Vec<String>) -> i32{
     0
 }
 
-// Under construction // Temporary template
-fn decompression_logic(path : String) {
-    //Decompression logic
-    let file = fs::File::open(&path).unwrap();
-    let mut archive = zip::ZipArchive::new(file).unwrap();
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).unwrap();
-
-        let outpath = match file.enclosed_name() {
-            Some(path) => path.to_owned(),
-            None => continue,
-        };
-        {
-            let comment = file.comment();
-            if !comment.is_empty(){
-                println!("File {} comment:{} ",i,comment);
-            }
-        }
-        if (*file.name()).ends_with('/'){
-            println!("File {} extracted to {}", i, outpath.display());
-            fs::create_dir_all(&outpath).unwrap();
-        }
-        else {
-            println!("File {} extracted to {} ", i, outpath.display());
-            if let Some(p) = outpath.parent() {
-                if !p.exists(){
-                    fs::create_dir_all(&p).unwrap();
+// Under construction 
+fn decompression_logic(cmd_string: Vec<String>) -> i32 {
+    utilities::print_help();
+    utilities::print_out();
+    let mut com_struct: DCommands = DCommands::default();
+    for i in 0..cmd_string.len() - 1 {
+        match cmd_string[i].as_str() {
+            "-i" => {
+                if cmd_string[i + 1].starts_with("-") {
+                    println!("Woops wrong syntax");
+                    return -1;
+                } else {
+                    com_struct.input = cmd_string[i + 1].clone();
                 }
             }
-            let mut outfile = fs::File::create(&outpath).unwrap();
-            io::copy(&mut file, &mut outfile).unwrap();
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Some(mode) = file.unix_mode(){
-                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+            "-o" => {
+                if cmd_string[i + 1].starts_with("-") {
+                    println!("Woops wrong syntax");
+                    return -1;
+                } else {
+                    com_struct.output = cmd_string[i + 1].clone();
+                }
             }
+            _ => (),
         }
     }
-}   
 
+    let cpath = env::current_dir().unwrap();
+    let input_path = cpath.join(&com_struct.input);
+
+    println!("{input_path:?} {}", com_struct.output);
+    if input_path.is_file() {
+        //Check if file ends with gz then uncompress or else donot
+        if com_struct.input.contains(&".gz".to_string()) {
+            //File decompression logic
+            let input_file = BufReader::new(File::open(&input_path).unwrap());
+            let mut output_file = File::create(&com_struct.output).unwrap();
+            let mut gz = GzDecoder::new(input_file);
+            copy(&mut gz, &mut output_file).unwrap();
+        }
+        else {
+            println!("Invalid File format");
+            return -1;
+        }
+    }
+    0
+}
 
 /* TODO:
 1 -> Uncompress
 2 -> Tests
 */
-pub fn comp_dir(stru_cpy: Commands) {
+fn comp_dir(stru_cpy: Commands) {
     let pth = Path::new(&stru_cpy.output);
     let npth = env::current_dir().unwrap();
     let npth = npth.join(pth);
