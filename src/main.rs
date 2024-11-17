@@ -44,7 +44,7 @@ fn main() {
         std::process::exit(decompression_logic(cmd_string));
     }
 }
-// ###################################ENTRY POINT###################################
+// ###################################ENTRY POINT TILL HERE###################################
 
 fn compression_logic(cmd_string: Vec<String>) -> i32 {
     utilities::print_help();
