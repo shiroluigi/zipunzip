@@ -1,6 +1,5 @@
 extern crate flate2;
 
-use flate2::bufread;
 use flate2::bufread::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -9,7 +8,6 @@ use std::env::args;
 use std::fs;
 use std::fs::create_dir_all;
 use std::fs::File;
-use std::io;
 use std::io::copy;
 use std::io::BufReader;
 use std::path::Path;
@@ -96,11 +94,15 @@ fn compression_logic(cmd_string: Vec<String>) -> i32 {
         }
     }
     if com_struct.input.is_empty()
-        | com_struct.output.is_empty()
+        // | com_struct.output.is_empty()
         | com_struct.level.eq(&0)
         | com_struct.work.is_empty()
     {
-        println!("Woops! Command criteria not fullfilled");
+        println!("Woops! Command criteria not fullfilled\nExitting...");
+        return -1;
+    }
+    if com_struct.output.is_empty(){
+        com_struct.output = String::from(".");
     }
     match com_struct.work.as_str() {
         "f" => {
@@ -150,9 +152,16 @@ fn compression_logic(cmd_string: Vec<String>) -> i32 {
                 return -1;
             }
             let start = Instant::now();
-            comp_dir(com_struct);
-            println!("Directory Archived!!");
-            println!("Elapsed Time: {:?}", start.elapsed());
+            match comp_dir(com_struct) {
+                Ok(_) => {
+                    println!("Directory Archived!!");
+                    println!("Elapsed Time: {:?}", start.elapsed());
+                },
+                Err(e) => {
+                    eprintln!("Compression failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         _ => {
             println!("Invalid flags selected!!");
@@ -209,22 +218,37 @@ fn decompression_logic(cmd_string: Vec<String>) -> i32 {
     0
 }
 
-/* TODO:
-1 -> Uncompress
-2 -> Tests
+//This folder compression is unsafe for complex files and might freeze the terminal, use on simple folder structures
+/*
+*
+* TODO: Use walkdir insted of append_dir_all
+*
 */
-fn comp_dir(stru_cpy: Commands) {
+fn comp_dir(stru_cpy: Commands) -> Result<(), Box<dyn std::error::Error>>  {
+    println!("Starting directory compression...");
+    let input_path = Path::new(&stru_cpy.input);
+    let abs_input_path = if input_path.is_absolute() {
+        input_path.to_path_buf()
+    } else {
+        env::current_dir()?.join(input_path)
+    };
+    if !abs_input_path.is_dir() {
+        print!("Path provided is not a directory!");
+        return Ok(());
+    }
     let pth = Path::new(&stru_cpy.output);
-    let npth = env::current_dir().unwrap();
+    let npth = env::current_dir()?;
     let npth = npth.join(pth);
     if !npth.exists() {
-        fs::create_dir_all(&npth).unwrap();
+        fs::create_dir_all(&npth)?;
     }
     let mut name = stru_cpy.name.to_owned();
     name.push_str(".tar.gz");
     let npth = npth.join(name);
-    let tar_gz = File::create(npth).unwrap();
+    let tar_gz = File::create(npth)?;
     let enc = GzEncoder::new(tar_gz, Compression::new(stru_cpy.level));
     let mut tar = tar::Builder::new(enc);
-    tar.append_dir_all("content", stru_cpy.input).unwrap();
+    tar.append_dir_all("compressed", abs_input_path)?;
+    tar.finish()?;
+    Ok(())
 }
